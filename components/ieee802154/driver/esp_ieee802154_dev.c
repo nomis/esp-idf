@@ -27,6 +27,29 @@
 
 #define CCA_DETECTION_TIME 8
 
+#define XSTR(a) STR(a)
+#define STR(a) #a
+#define LINE_AS_STR XSTR(__LINE__)
+#define VERBOSE_ASSERT(expr) \
+    do { \
+        if (!(expr)) { \
+            switch (s_ieee802154_state) { \
+            case IEEE802154_STATE_DISABLE: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_DISABLE"); break; \
+            case IEEE802154_STATE_IDLE: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_IDLE"); break; \
+            case IEEE802154_STATE_RX: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_RX"); break; \
+            case IEEE802154_STATE_TX_ACK: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_TX_ACK"); break; \
+            case IEEE802154_STATE_TX_ENH_ACK: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_TX_ENH_ACK"); break; \
+            case IEEE802154_STATE_TX_CCA: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_TX_CCA"); break; \
+            case IEEE802154_STATE_TX: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_TX"); break; \
+            case IEEE802154_STATE_TEST_TX: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_TEST_TX"); break; \
+            case IEEE802154_STATE_RX_ACK: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_RX_ACK"); break; \
+            case IEEE802154_STATE_ED: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_ED"); break; \
+            case IEEE802154_STATE_CCA: esp_system_abort(__FILE__ ":" LINE_AS_STR " s_ieee802154_state=IEEE802154_STATE_CCA"); break; \
+            default: esp_system_abort(__FILE__ ":" LINE_AS_STR); break; \
+            } \
+        } \
+    } while (0)
+
 extern void bt_bb_set_zb_tx_on_delay(uint16_t time);
 
 static volatile ieee802154_state_t s_ieee802154_state;
@@ -361,26 +384,26 @@ static IRAM_ATTR void isr_handle_rx_abort(void)
     case IEEE802154_RX_ABORT_BY_NO_RSS:
     case IEEE802154_RX_ABORT_BY_UNEXPECTED_ACK:
     case IEEE802154_RX_ABORT_BY_RX_RESTART:
-        assert(s_ieee802154_state == IEEE802154_STATE_RX);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX);
         break;
     case IEEE802154_RX_ABORT_BY_COEX_BREAK:
-        assert(s_ieee802154_state == IEEE802154_STATE_RX);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX);
         esp_ieee802154_receive_failed(rx_status);
         break;
     case IEEE802154_RX_ABORT_BY_ED_ABORT:
     case IEEE802154_RX_ABORT_BY_ED_COEX_REJECT:
-        assert(s_ieee802154_state == IEEE802154_STATE_ED || s_ieee802154_state == IEEE802154_STATE_CCA);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_ED || s_ieee802154_state == IEEE802154_STATE_CCA);
         esp_ieee802154_ed_failed(rx_status);
         next_operation();
         break;
     case IEEE802154_RX_ABORT_BY_TX_ACK_TIMEOUT:
     case IEEE802154_RX_ABORT_BY_TX_ACK_COEX_BREAK:
-        assert(s_ieee802154_state == IEEE802154_STATE_TX_ACK || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX_ACK || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
         esp_ieee802154_receive_done((uint8_t *)s_rx_frame[s_rx_index], &s_rx_frame_info[s_rx_index]);
         next_operation();
         break;
     case IEEE802154_RX_ABORT_BY_ENHACK_SECURITY_ERROR:
-        assert(s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
         esp_ieee802154_receive_done((uint8_t *)s_rx_frame[s_rx_index], &s_rx_frame_info[s_rx_index]);
         next_operation();
         break;
@@ -406,32 +429,32 @@ static IRAM_ATTR void isr_handle_tx_abort(void)
     case IEEE802154_TX_ABORT_BY_RX_ACK_COEX_BREAK:
     case IEEE802154_TX_ABORT_BY_RX_ACK_TYPE_NOT_ACK:
     case IEEE802154_TX_ABORT_BY_RX_ACK_RESTART:
-        assert(s_ieee802154_state == IEEE802154_STATE_RX_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX_ACK);
         esp_ieee802154_transmit_failed(s_tx_frame, ESP_IEEE802154_TX_ERR_INVALID_ACK);
         break;
     case IEEE802154_TX_ABORT_BY_RX_ACK_TIMEOUT:
-        assert(s_ieee802154_state == IEEE802154_STATE_RX_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX_ACK);
         ieee802154_ll_disable_events(IEEE802154_EVENT_TIMER0_OVERFLOW);
         esp_ieee802154_transmit_failed(s_tx_frame, ESP_IEEE802154_TX_ERR_NO_ACK);
         next_operation();
         break;
     case IEEE802154_TX_ABORT_BY_TX_COEX_BREAK:
-        assert(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA);
         esp_ieee802154_transmit_failed(s_tx_frame, ESP_IEEE802154_TX_ERR_COEXIST);
         next_operation();
         break;
     case IEEE802154_TX_ABORT_BY_TX_SECURITY_ERROR:
-        assert(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA);
         esp_ieee802154_transmit_failed(s_tx_frame, ESP_IEEE802154_TX_ERR_SECURITY);
         next_operation();
         break;
     case IEEE802154_TX_ABORT_BY_CCA_FAILED:
-        assert(s_ieee802154_state == IEEE802154_STATE_TX_CCA);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX_CCA);
         esp_ieee802154_transmit_failed(s_tx_frame, ESP_IEEE802154_TX_ERR_ABORT);
         next_operation();
         break;
     case IEEE802154_TX_ABORT_BY_CCA_BUSY:
-        assert(s_ieee802154_state == IEEE802154_STATE_TX_CCA);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX_CCA);
         esp_ieee802154_transmit_failed(s_tx_frame, ESP_IEEE802154_TX_ERR_CCA_BUSY);
         next_operation();
         break;
@@ -460,7 +483,8 @@ static void ieee802154_isr(void *arg)
 
     if (events & IEEE802154_EVENT_RX_SFD_DONE) {
         // IEEE802154_STATE_TX && IEEE802154_STATE_TX_CCA && IEEE802154_STATE_TX_ENH_ACK for isr processing delay
-        assert(s_ieee802154_state == IEEE802154_STATE_RX || s_ieee802154_state == IEEE802154_STATE_RX_ACK || s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX || s_ieee802154_state == IEEE802154_STATE_RX_ACK || s_ieee802154_state == IEEE802154_STATE_TX ||
+        s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
 
         s_rx_frame_info[s_rx_index].timestamp = esp_timer_get_time();
         esp_ieee802154_receive_sfd_done();
@@ -470,7 +494,7 @@ static void ieee802154_isr(void *arg)
 
     if (events & IEEE802154_EVENT_TX_SFD_DONE) {
         // ZB-81: IEEE802154_STATE_TX_ACK is also a possible state
-        assert(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TEST_TX || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK || s_ieee802154_state == IEEE802154_STATE_TX_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TEST_TX || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK || s_ieee802154_state == IEEE802154_STATE_TX_ACK);
 
         esp_ieee802154_transmit_sfd_done(s_tx_frame);
 
@@ -478,7 +502,7 @@ static void ieee802154_isr(void *arg)
     }
 
     if (events & IEEE802154_EVENT_TX_DONE) {
-        assert(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TEST_TX || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TEST_TX || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
 
         isr_handle_tx_done();
 
@@ -486,7 +510,7 @@ static void ieee802154_isr(void *arg)
     }
 
     if (events & IEEE802154_EVENT_RX_DONE) {
-        assert(s_ieee802154_state == IEEE802154_STATE_RX);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX);
 
         isr_handle_rx_done();
 
@@ -495,7 +519,7 @@ static void ieee802154_isr(void *arg)
 
     if (events & IEEE802154_EVENT_ACK_TX_DONE) {
         // IEEE802154_STATE_RX for isr processing delay
-        assert(s_ieee802154_state == IEEE802154_STATE_TX_ACK || s_ieee802154_state == IEEE802154_STATE_RX || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_TX_ACK || s_ieee802154_state == IEEE802154_STATE_RX || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
 
         isr_handle_ack_tx_done();
 
@@ -504,7 +528,7 @@ static void ieee802154_isr(void *arg)
 
     if (events & IEEE802154_EVENT_ACK_RX_DONE) {
         // IEEE802154_STATE_TX && IEEE802154_STATE_TX_CCA && IEEE802154_STATE_TX_ENH_ACK for isr processing delay
-        assert(s_ieee802154_state == IEEE802154_STATE_RX_ACK || s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX_ACK || s_ieee802154_state == IEEE802154_STATE_TX || s_ieee802154_state == IEEE802154_STATE_TX_CCA || s_ieee802154_state == IEEE802154_STATE_TX_ENH_ACK);
 
         isr_handle_ack_rx_done();
 
@@ -524,7 +548,7 @@ static void ieee802154_isr(void *arg)
     }
 
     if (events & IEEE802154_EVENT_ED_DONE) {
-        assert(s_ieee802154_state == IEEE802154_STATE_ED || s_ieee802154_state == IEEE802154_STATE_CCA);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_ED || s_ieee802154_state == IEEE802154_STATE_CCA);
 
         isr_handle_ed_done();
 
@@ -532,7 +556,7 @@ static void ieee802154_isr(void *arg)
     }
 
     if (events & IEEE802154_EVENT_TIMER0_OVERFLOW) {
-        assert(s_ieee802154_state == IEEE802154_STATE_RX_ACK);
+        VERBOSE_ASSERT(s_ieee802154_state == IEEE802154_STATE_RX_ACK);
         isr_handle_timer0_done();
 
         events &= (uint16_t)(~IEEE802154_EVENT_TIMER0_OVERFLOW);
