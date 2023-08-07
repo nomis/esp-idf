@@ -85,7 +85,7 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
         return result
 
     def monitor(action: str, ctx: click.core.Context, args: PropertyDict, print_filter: str, monitor_baud: str, encrypted: bool,
-                no_reset: bool, timestamps: bool, timestamp_format: str, force_color: bool) -> None:
+                no_reset: bool, ignore_input: bool, timestamps: bool, timestamp_format: str, force_color: bool) -> None:
         """
         Run esp_idf_monitor to watch build output
         """
@@ -144,6 +144,9 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
 
         if no_reset:
             monitor_args += ['--no-reset']
+
+        if ignore_input:
+            monitor_args += ['--ignore-input']
 
         if timestamps:
             monitor_args += ['--timestamps']
@@ -306,6 +309,10 @@ def action_extensions(base_actions: Dict, project_path: str) -> Dict:
                         'names': ['--force-color'],
                         'is_flag': True,
                         'help': 'Always print ANSI for colors',
+                    }, {
+                        'names': ['--ignore-input'],
+                        'is_flag': True,
+                        'help': 'Do not send console input to the serial port',
                     }
 
                 ],
