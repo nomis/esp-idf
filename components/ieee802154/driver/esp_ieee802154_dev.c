@@ -88,6 +88,9 @@ static void ieee802154_receive_done(uint8_t *data, esp_ieee802154_frame_info_t *
     } else {
         // Otherwise, post it to the upper layer.
         frame_info->process = true;
+        if (data[0] > 127) {
+            esp_rom_printf("oversized frame: %p %d\n", data, data[0]);
+        }
         esp_ieee802154_receive_done(data, frame_info);
     }
 }
@@ -757,6 +760,11 @@ esp_err_t ieee802154_mac_init(void)
     ESP_RETURN_ON_FALSE(ret == ESP_OK, ESP_FAIL, IEEE802154_TAG, "IEEE802154 MAC init failed");
 
     ESP_RETURN_ON_FALSE(ieee802154_sleep_init() == ESP_OK, ESP_FAIL, IEEE802154_TAG, "IEEE802154 MAC sleep init failed");
+
+    esp_cpu_set_watchpoint(0, s_rx_frame[0], 4, ESP_CPU_WATCHPOINT_STORE);
+    esp_cpu_set_watchpoint(1, s_rx_frame[1], 4, ESP_CPU_WATCHPOINT_STORE);
+    esp_cpu_set_watchpoint(2, s_rx_frame[2], 4, ESP_CPU_WATCHPOINT_STORE);
+    esp_cpu_set_watchpoint(3, s_rx_frame[3], 4, ESP_CPU_WATCHPOINT_STORE);
 
     return ret;
 }
