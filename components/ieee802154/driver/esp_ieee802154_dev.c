@@ -88,6 +88,9 @@ static void ieee802154_receive_done(uint8_t *data, esp_ieee802154_frame_info_t *
     } else {
         // Otherwise, post it to the upper layer.
         frame_info->process = true;
+        if (data[0] > 127) {
+            esp_rom_printf("ovesized frame: %d\n", data[0]);
+        }
         esp_ieee802154_receive_done(data, frame_info);
     }
 }
