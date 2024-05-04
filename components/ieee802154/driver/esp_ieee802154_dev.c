@@ -62,6 +62,9 @@ static uint8_t *s_tx_frame = NULL;
 static uint8_t s_rx_frame[CONFIG_IEEE802154_RX_BUFFER_SIZE + 1][IEEE802154_RX_FRAME_SIZE];
 static esp_ieee802154_frame_info_t s_rx_frame_info[CONFIG_IEEE802154_RX_BUFFER_SIZE + 1];
 
+static uint8_t s_rx_frame_copy[CONFIG_IEEE802154_RX_BUFFER_SIZE + 1][IEEE802154_RX_FRAME_SIZE] = { 0 };
+static esp_ieee802154_frame_info_t s_rx_frame_info_copy[CONFIG_IEEE802154_RX_BUFFER_SIZE + 1] = { 0 };
+
 static uint8_t s_rx_index = 0;
 static uint8_t s_enh_ack_frame[128];
 static uint8_t s_recent_rx_frame_info_index;
@@ -80,6 +83,8 @@ typedef struct {
 static pending_tx_t s_pending_tx = { 0 };
 #endif
 
+int ieee802154_test = 0;
+
 static void ieee802154_receive_done(uint8_t *data, esp_ieee802154_frame_info_t *frame_info)
 {
     // If the RX done packet is written in the stub buffer, drop it silently.
@@ -88,9 +93,28 @@ static void ieee802154_receive_done(uint8_t *data, esp_ieee802154_frame_info_t *
     } else {
         // Otherwise, post it to the upper layer.
         frame_info->process = true;
-        if (data[0] > 127) {
-            esp_rom_printf("oversized frame: %p %d\n", data, data[0]);
+        if (data[0] > 127 || ieee802154_test) {
+            esp_rom_printf("oversized frame: %p %d %u\n", data, data[0], s_rx_index);
+            for (int i = 0; i < CONFIG_IEEE802154_RX_BUFFER_SIZE + 1; i++) {
+                esp_rom_printf("s_rx_frame: %p %d %d %" PRIu64 " ",
+                    &s_rx_frame[i], s_rx_frame_info[i].pending, s_rx_frame_info[i].process, s_rx_frame_info[i].timestamp);
+                for (int j = 0; j < sizeof(s_rx_frame[i]); j++) {
+                    esp_rom_printf("%02X", s_rx_frame[i][j]);
+                }
+                esp_rom_printf("\n");
+            }
+            for (int i = 0; i < CONFIG_IEEE802154_RX_BUFFER_SIZE + 1; i++) {
+                esp_rom_printf("s_rx_frame_copy: %p %d %d %" PRIu64 " ",
+                    &s_rx_frame_copy[i], s_rx_frame_info_copy[i].pending, s_rx_frame_info_copy[i].process, s_rx_frame_info_copy[i].timestamp);
+                for (int j = 0; j < sizeof(s_rx_frame_copy[i]); j++) {
+                    esp_rom_printf("%02X", s_rx_frame_copy[i][j]);
+                }
+                esp_rom_printf("\n");
+            }
+            ieee802154_test = 0;
         }
+        memcpy(s_rx_frame_copy, s_rx_frame, sizeof(s_rx_frame));
+        memcpy(s_rx_frame_info_copy, s_rx_frame_info, sizeof(s_rx_frame_info));
         esp_ieee802154_receive_done(data, frame_info);
     }
 }
